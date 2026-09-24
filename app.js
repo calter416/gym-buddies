@@ -49,6 +49,7 @@ const I = {
   flag: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h12l-2.5 4 2.5 4H5"/></svg>`,
   pencil: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></svg>`,
   trash: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>`,
+  search: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>`,
   cal: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>`,
   save: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>`,
   sparkle: (fill) => `<svg width="100%" height="100%" viewBox="0 0 24 24"><path d="M12 2C13 8 16 11 22 12C16 13 13 16 12 22C11 16 8 13 2 12C8 11 11 8 12 2Z" fill="${fill}"/></svg>`,
@@ -102,7 +103,7 @@ if (navigator.storage && navigator.storage.persist) navigator.storage.persist().
 
 // ---------- UI state (not saved) ----------
 const blankNew = () => ({ name: '', brand: 'Hoist', warm: 1, sets: 3, reps: 10, w: { cassie: { warm: 20, full: 30 }, dad: { warm: 20, full: 30 } } });
-const ui = { screen: data.current ? 'workout' : 'home', draft: null, editIdx: null, nw: blankNew(), summary: null, toast: null };
+const ui = { screen: data.current ? 'workout' : 'home', q: '', draft: null, editIdx: null, nw: blankNew(), summary: null, toast: null };
 
 function findEx(id) { return data.lib.find((e) => e.id === id); }
 function activeLifters() {
@@ -253,21 +254,26 @@ function workoutScreen() {
 
 function pickScreen() {
   const done = new Set(data.current ? data.current.log.map((e) => e.id) : []);
+  const sorted = data.lib.slice().sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
   return `<div class="screen">${header('Add an exercise', 'back-workout')}
+    <div class="pad" style="padding-bottom:10px">
+      <div class="row search-box">${I.search}<input id="ex-search" type="search" placeholder="Search exercises" autocomplete="off" aria-label="Search exercises" value="${esc(ui.q)}" data-bind="search"></div>
+    </div>
     <div class="scroll pad stack" style="gap:10px;padding-top:4px;padding-bottom:24px">
       <button class="list-btn" data-act="new" style="border:3px dashed #B9A8FF;color:var(--primary-dark);gap:12px;padding:14px 16px">
         <span style="width:40px;height:40px;flex-shrink:0;border-radius:14px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center">${I.plus()}</span>
         <span class="stack" style="gap:2px"><span style="font-weight:800;font-size:16px">New exercise or machine</span><span class="muted" style="font-size:14px">Set it up once, it pre-fills after</span></span>
       </button>
-      ${data.lib.map((ex) => {
+      ${sorted.map((ex) => {
         const sel = ui.draft && ui.draft.id === ex.id;
-        return `<button class="list-btn" data-act="choose" data-id="${esc(ex.id)}" style="${sel ? 'background:var(--lilac);border-color:var(--primary)' : ''}">
+        return `<button class="list-btn" data-act="choose" data-id="${esc(ex.id)}" data-name="${esc(ex.name.toLowerCase())}" style="${sel ? 'background:var(--lilac);border-color:var(--primary)' : ''}">
           <span class="stack" style="flex:1;gap:5px"><span class="display" style="font-size:18px;font-weight:600">${esc(ex.name)}</span>
             <span class="row" style="gap:8px;flex-wrap:wrap">${brandPill(ex.brand)}<span class="muted" style="font-size:14px">${scheme(ex)}</span></span></span>
           ${ex.isNew ? `<span class="pill" style="background:var(--pink-soft);color:var(--pink-ink)">New</span>` : ''}
           ${done.has(ex.id) ? `<span class="pill" style="background:var(--blue-soft);color:var(--blue-ink)">${I.check(14)}Done</span>` : ''}
         </button>`;
       }).join('')}
+      <div id="no-match" class="muted" style="display:none;text-align:center;padding:24px 12px;line-height:1.4">No exercise called “<span id="no-match-q"></span>” yet.<br>Tap <b>New exercise or machine</b> to add it.</div>
     </div>
     ${ui.draft ? sheetHtml() : ''}
   </div>`;
@@ -389,6 +395,19 @@ function moreScreen() {
     </div></div>`;
 }
 
+function applySearch() {
+  if (!document.getElementById('ex-search')) return;
+  const q = ui.q.trim().toLowerCase();
+  let shown = 0;
+  app.querySelectorAll('[data-act="choose"]').forEach((b) => {
+    const hit = !q || b.dataset.name.includes(q);
+    b.style.display = hit ? '' : 'none';
+    if (hit) shown++;
+  });
+  document.getElementById('no-match').style.display = shown ? 'none' : '';
+  document.getElementById('no-match-q').textContent = ui.q.trim();
+}
+
 // ---------- Render ----------
 const app = document.getElementById('app');
 function render() {
@@ -403,6 +422,7 @@ function render() {
     homeScreen();
   if (ui.toast) html += `<div class="toast" role="status">${esc(ui.toast)}</div>`;
   app.innerHTML = html;
+  applySearch();
 }
 let toastTimer;
 function toast(msg) {
@@ -473,7 +493,7 @@ const actions = {
     data.current = { date: new Date().toISOString(), lifters: Object.assign({}, data.lifters), log: [] };
     save(); go('workout');
   },
-  pick: () => { ui.draft = null; ui.editIdx = null; go('pick'); },
+  pick: () => { ui.draft = null; ui.editIdx = null; ui.q = ''; go('pick'); },
   'back-workout': () => { ui.draft = null; ui.editIdx = null; go('workout'); },
   choose: (el) => { const ex = findEx(el.dataset.id); if (ex) { ui.draft = draftFor(ex); ui.editIdx = null; render(); } },
   edit: (el) => { const i = Number(el.dataset.idx); ui.editIdx = i; ui.draft = draftFromEntry(data.current.log[i]); render(); },
@@ -500,7 +520,7 @@ const actions = {
     ui.draft = null; ui.editIdx = null;
     save(); render();
   },
-  new: () => { ui.nw = blankNew(); ui.draft = null; go('new'); },
+  new: () => { ui.nw = blankNew(); ui.nw.name = ui.q.trim().replace(/\b[a-z]/g, (c) => c.toUpperCase()); ui.q = ''; ui.draft = null; go('new'); },
   brand: (el) => { ui.nw.brand = el.dataset.brand; render(); },
   'save-new': () => {
     const n = ui.nw; const name = n.name.trim();
@@ -543,6 +563,9 @@ app.addEventListener('input', (ev) => {
     const clean = t.value.replace(/[^0-9.]/g, '');
     if (clean !== t.value) t.value = clean;
     ui[t.dataset.w].w[t.dataset.who][t.dataset.kind] = clean;
+  } else if (t.dataset.bind === 'search') {
+    ui.q = t.value;
+    applySearch();
   } else if (t.dataset.bind === 'nwname') {
     ui.nw.name = t.value;
     const btn = document.getElementById('save-new');
