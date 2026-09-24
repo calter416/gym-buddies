@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------- Constants ----------
-const APP_VERSION = 'v4'; // keep in step with VERSION in sw.js
+const APP_VERSION = 'v5'; // keep in step with VERSION in sw.js
 const STORAGE_KEY = 'gymbuddies.v1';
 const PEOPLE = ['cassie', 'dad'];
 const NAMES = { cassie: 'Cassie', dad: 'Dad' };
@@ -104,7 +104,7 @@ if (navigator.storage && navigator.storage.persist) navigator.storage.persist().
 
 // ---------- UI state (not saved) ----------
 const blankNew = () => ({ name: '', brand: 'Hoist', warm: 1, sets: 3, reps: 10, w: { cassie: { warm: 20, full: 30 }, dad: { warm: 20, full: 30 } } });
-const ui = { screen: data.current ? 'workout' : 'home', q: '', draft: null, editIdx: null, nw: blankNew(), summary: null, toast: null };
+const ui = { screen: data.current ? 'workout' : 'home', offline: null, q: '', draft: null, editIdx: null, nw: blankNew(), summary: null, toast: null };
 
 function findEx(id) { return data.lib.find((e) => e.id === id); }
 function activeLifters() {
@@ -400,9 +400,29 @@ function summaryScreen() {
   <div class="bottom"><button class="btn btn-primary" style="width:100%" data-act="home">Back home</button></div></div>`;
 }
 
+function offlineBadge() {
+  const o = ui.offline;
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  let tone, title, text;
+  if (o && o.ready) {
+    tone = ['#DCF5E8', '#1E6B45']; title = 'Ready for offline';
+    text = standalone ? 'You can use Gym Buddies with no internet.' : 'Saved for offline in this browser. Remember to use the home-screen icon at the gym.';
+  } else if (o) {
+    tone = ['#FFF0D9', '#7A4B00']; title = 'Not ready for offline yet';
+    text = 'Open the app once with internet, wait a few seconds, then check here again.';
+  } else {
+    tone = ['#EFEDF5', '#4A4560']; title = 'Checking offline…';
+    text = 'serviceWorker' in navigator ? 'One moment.' : 'This browser can’t save the app for offline. On iPhone, use Safari.';
+  }
+  return `<div class="row" style="gap:12px;background:${tone[0]};color:${tone[1]};border-radius:18px;padding:14px 16px">
+    <span style="flex-shrink:0">${o && o.ready ? I.check(24) : I.save}</span>
+    <span class="stack" style="gap:2px"><span style="font-weight:800;font-size:16px">${title}</span><span style="font-size:14px;line-height:1.35">${text}</span></span></div>`;
+}
+
 function moreScreen() {
   return `<div class="screen">${header('Backup & data', 'home')}
     <div class="scroll pad stack" style="gap:14px;padding-top:4px;padding-bottom:24px">
+      ${offlineBadge()}
       <div class="card muted" style="padding:16px;line-height:1.45;font-size:15px">Everything is saved on this phone only, and works without internet. Save a backup file now and then, so you don't lose your history if you get a new phone or clear your browser data.</div>
       <div class="card row" style="padding:14px 16px;gap:12px"><span class="display num" style="color:var(--primary)">${data.history.length}</span><span class="muted">workout${data.history.length === 1 ? '' : 's'} logged in this app</span></div>
       <button class="btn btn-primary" data-act="export-json">${I.save}Save backup file</button>
@@ -503,7 +523,7 @@ const actions = {
   who: () => go('who'),
   home: () => { ui.summary = null; go('home'); },
   resume: () => go('workout'),
-  more: () => go('more'),
+  more: () => { go('more'); checkOffline(); },
   toggle: (el) => { const k = el.dataset.who; data.lifters[k] = !data.lifters[k]; save(); render(); },
   start: () => {
     if (!PEOPLE.some((k) => data.lifters[k])) return;
@@ -624,6 +644,20 @@ document.getElementById('import-file').addEventListener('change', (ev) => {
 render();
 
 // ---------- Offline support ----------
+function checkOffline() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.ready.then((reg) => {
+    const sw = navigator.serviceWorker.controller || reg.active;
+    if (sw) sw.postMessage('offline-status');
+  }).catch(() => {});
+}
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (ev) => {
+    if (!ev.data || ev.data.type !== 'offline-status') return;
+    ui.offline = ev.data;
+    if (ui.screen === 'more') render();
+  });
+}
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   // When a new version takes over, reload once so it shows right away.
   const hadController = !!navigator.serviceWorker.controller;
