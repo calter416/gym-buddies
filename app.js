@@ -1,6 +1,7 @@
 'use strict';
 
 // ---------- Constants ----------
+const APP_VERSION = 'v3'; // keep in step with VERSION in sw.js
 const STORAGE_KEY = 'gymbuddies.v1';
 const PEOPLE = ['cassie', 'dad'];
 const NAMES = { cassie: 'Cassie', dad: 'Dad' };
@@ -392,6 +393,7 @@ function moreScreen() {
       <button class="btn btn-primary" data-act="export-json">${I.save}Save backup file</button>
       <button class="btn btn-soft" data-act="export-csv">Export history for Google Sheets</button>
       <button class="btn btn-soft" data-act="import">Restore from a backup file</button>
+      <div class="muted" style="text-align:center;font-size:13px;margin-top:6px">Gym Buddies ${APP_VERSION}</div>
     </div></div>`;
 }
 
@@ -600,5 +602,25 @@ render();
 
 // ---------- Offline support ----------
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  // When a new version takes over, reload once so it shows right away.
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  let pendingReload = false;
+  const busy = () => !!ui.draft || ui.screen === 'new';
+  const reloadNow = () => { if (reloading) return; reloading = true; location.reload(); };
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController) return;
+    if (busy()) pendingReload = true; // don't lose weights being typed; reload once they're done
+    else reloadNow();
+  });
+  app.addEventListener('click', () => { if (pendingReload) setTimeout(() => { if (!busy()) reloadNow(); }, 0); });
+  document.addEventListener('visibilitychange', () => { if (pendingReload && document.visibilityState === 'hidden') reloadNow(); });
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
+      // Phones often resume the app instead of reopening it, so check for updates on every return.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update().catch(() => {});
+      });
+    }).catch(() => {});
+  });
 }
