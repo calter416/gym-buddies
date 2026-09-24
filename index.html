@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gym Buddies</title>
+<meta name="description" content="Gym Buddies: an offline workout tracker. Alter your limits.">
+<meta name="theme-color" content="#F4F1FF">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Gym Buddies">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F1FF; --card:#FFFFFF; --ink:#251E4D; --muted:#625C87;
+  --primary:#6D4AE0; --primary-dark:#4B2FB8; --lilac:#EEE9FF; --line:#E2DCF7; --line2:#D9D0FF;
+  --blue-soft:#DCE5FF; --blue-ink:#2A4FBF; --pink-soft:#FFE0EA; --pink-ink:#A3224F;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:'Nunito',system-ui,sans-serif;font-weight:700}
+body{overscroll-behavior:none}
+button,input{font-family:inherit;color:inherit}
+.display{font-family:'Fredoka','Nunito',system-ui,sans-serif}
+#app{max-width:480px;margin:0 auto;height:100dvh;position:relative;overflow:hidden}
+.screen{height:100%;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+.pad{padding-left:20px;padding-right:20px}
+.scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.stack{display:flex;flex-direction:column}
+.row{display:flex;align-items:center}
+.bottom{padding:14px 20px calc(18px + env(safe-area-inset-bottom))}
+.btn{border:none;border-radius:22px;font-family:'Fredoka',system-ui,sans-serif;font-weight:600;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;min-height:58px;font-size:19px;padding:0 18px}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 5px 0 var(--primary-dark)}
+.btn-primary:active{transform:translateY(3px);box-shadow:0 2px 0 var(--primary-dark)}
+.btn-soft{background:#fff;color:var(--primary-dark);box-shadow:0 5px 0 var(--line2)}
+.btn-soft:active{transform:translateY(3px);box-shadow:0 2px 0 var(--line2)}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.icon-btn{width:44px;height:44px;flex-shrink:0;border-radius:14px;border:none;background:#fff;color:var(--primary-dark);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 0 var(--line2);cursor:pointer}
+.icon-btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line2)}
+.icon-btn.flat{background:var(--bg);box-shadow:none}
+.card{background:#fff;border-radius:24px;box-shadow:0 4px 0 var(--line)}
+.pill{border-radius:999px;padding:5px 11px;font-size:13px;font-weight:800;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+.label{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.h1{font-size:28px;font-weight:700;margin:0}
+.muted{color:var(--muted)}
+.av{display:inline-block;flex-shrink:0;line-height:0}
+.av svg{width:100%;height:100%;display:block}
+.wt{width:100%;min-width:0;height:50px;border:3px solid var(--line2);border-radius:14px;background:#fff;font-family:'Fredoka',system-ui,sans-serif;font-size:24px;font-weight:600;color:var(--ink);text-align:center;outline:none;padding:0 6px}
+.wt:focus,.text-in:focus{border-color:var(--primary);box-shadow:0 0 0 4px #E6DEFF}
+.text-in{height:56px;border-radius:18px;border:3px solid var(--line2);background:#fff;padding:0 16px;font-size:18px;font-weight:700;outline:none;width:100%}
+.list-btn{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:20px;border:3px solid #fff;background:#fff;cursor:pointer;text-align:left;width:100%}
+.list-btn:active{background:var(--lilac)}
+.overlay{position:absolute;inset:0;background:rgba(37,30,77,.4);animation:fade .15s ease-out}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:92%;overflow-y:auto;background:#fff;border-radius:32px 32px 0 0;padding:12px 20px calc(24px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:14px;animation:up .2s ease-out}
+@keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.toast{position:absolute;left:20px;right:20px;bottom:calc(96px + env(safe-area-inset-bottom));background:var(--ink);color:#fff;border-radius:18px;padding:14px 16px;font-weight:800;text-align:center;animation:up .2s ease-out;z-index:10}
+.hero-top{position:relative;background:var(--primary);border-radius:0 0 40px 40px;padding:calc(28px + env(safe-area-inset-top)) 20px 26px;margin-top:calc(-1 * env(safe-area-inset-top));color:#fff;display:flex;flex-direction:column;align-items:center;gap:8px}
+.spark{position:absolute}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.cell{background:var(--bg);border-radius:20px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.num{font-family:'Fredoka',system-ui,sans-serif;font-size:28px;font-weight:600}
+</style>
+</head>
+<body>
+<div id="app" aria-live="polite"></div>
+<input type="file" id="import-file" accept=".json,application/json" hidden>
+<noscript>Gym Buddies needs JavaScript turned on.</noscript>
+<script src="avatars.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
