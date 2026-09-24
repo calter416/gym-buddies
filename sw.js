@@ -1,6 +1,6 @@
 // Gym Buddies service worker: keeps the app working with no internet.
 // Bump VERSION when app files change so phones pick up the new version.
-const VERSION = 'v3';
+const VERSION = 'v4';
 const CACHE = 'gym-buddies-' + VERSION;
 const SHELL = [
   './',

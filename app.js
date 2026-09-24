@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------- Constants ----------
-const APP_VERSION = 'v3'; // keep in step with VERSION in sw.js
+const APP_VERSION = 'v4'; // keep in step with VERSION in sw.js
 const STORAGE_KEY = 'gymbuddies.v1';
 const PEOPLE = ['cassie', 'dad'];
 const NAMES = { cassie: 'Cassie', dad: 'Dad' };
@@ -303,6 +303,20 @@ function weightCards(target, o, lastLabel) {
     }).join('')}</div></div>`).join('');
 }
 
+function defaultPrompt(d, ex) {
+  if (d.defaultSaved) {
+    return `<div class="row" style="gap:10px;background:var(--blue-soft);color:var(--blue-ink);border-radius:18px;padding:12px 14px;font-size:15px">${I.check(20)}<span>Saved. ${esc(ex.name)} will start at ${scheme(ex)} from now on.</span></div>`;
+  }
+  const changed = d.warm !== ex.warm || d.sets !== ex.sets || d.reps !== ex.reps;
+  if (!changed || d.defaultAsked) return '';
+  return `<div class="stack" style="gap:10px;background:var(--lilac);border:2px solid #CFC3FF;border-radius:18px;padding:12px 14px">
+    <span style="font-size:15px;line-height:1.35">Apply <b>${scheme(d)}</b> to future workouts?</span>
+    <div class="row" style="gap:8px">
+      <button class="btn btn-soft" style="flex:1;min-height:44px;font-size:16px;border-radius:14px;box-shadow:0 3px 0 var(--line2)" data-act="default-no">No, just today</button>
+      <button class="btn btn-primary" style="flex:1;min-height:44px;font-size:16px;border-radius:14px;box-shadow:0 3px 0 var(--primary-dark)" data-act="default-yes">Yes</button>
+    </div></div>`;
+}
+
 function sheetHtml() {
   const d = ui.draft;
   const ex = findEx(d.id);
@@ -324,6 +338,7 @@ function sheetHtml() {
       <button class="icon-btn flat" data-act="close" aria-label="Close">${I.close}</button>
     </div>
     <div class="grid3">${countCells('draft', d)}</div>
+    ${defaultPrompt(d, ex)}
     ${ex.bw ? `<div class="muted" style="background:var(--bg);border-radius:18px;padding:14px">No machine, so just sets and reps.</div>`
             : `<div class="stack" style="gap:10px">${weightCards('draft', d, last)}</div>`}
     ${editing
@@ -451,7 +466,7 @@ function finishWorkout() {
       const wu = num(e.w[k].warm), fu = num(e.w[k].full);
       if (!isNaN(wu) && !isNaN(fu)) last[k] = [wu, fu];
     });
-    return Object.assign({}, ex, { warm: e.warm, sets: e.sets, reps: e.reps, last: e.bw ? null : last, isNew: false });
+    return Object.assign({}, ex, { last: e.bw ? null : last, isNew: false });
   });
   data.history.push(clone(cur));
   data.last = { label: new Date(cur.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), names: cur.log.map((e) => e.name) };
@@ -503,6 +518,7 @@ const actions = {
   count: (el) => {
     const o = ui[el.dataset.target]; const f = el.dataset.field;
     o[f] = Math.max(f === 'warm' ? 0 : 1, o[f] + Number(el.dataset.dir));
+    o.defaultAsked = false; o.defaultSaved = false; // numbers changed again, so ask again
     render();
   },
   'save-draft': () => {
@@ -522,6 +538,13 @@ const actions = {
     ui.draft = null; ui.editIdx = null;
     save(); render();
   },
+  'default-yes': () => {
+    const d = ui.draft; const ex = findEx(d.id);
+    ex.warm = d.warm; ex.sets = d.sets; ex.reps = d.reps;
+    d.defaultSaved = true;
+    save(); render();
+  },
+  'default-no': () => { ui.draft.defaultAsked = true; render(); },
   new: () => { ui.nw = blankNew(); ui.nw.name = ui.q.trim().replace(/\b[a-z]/g, (c) => c.toUpperCase()); ui.q = ''; ui.draft = null; go('new'); },
   brand: (el) => { ui.nw.brand = el.dataset.brand; render(); },
   'save-new': () => {
